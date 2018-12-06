@@ -12,6 +12,8 @@ $dataset = new CsvDataset('data/person_original_train.csv', 9, true, ';');
 $regressionModell = new RandomForrest();
 $regressionModell->train($dataset->getSamples(), $dataset->getTargets(), $dataset->getColumnNames());
 
+exit();
+
 $dataset = new CsvDataset('data/person_original_predict.csv', 9, true, ';');
 $samples = $dataset->getSamples();
 $targets = $dataset->getTargets();

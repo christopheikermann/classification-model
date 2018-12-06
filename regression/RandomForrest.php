@@ -50,6 +50,9 @@ class RandomForrest {
                 }
             }
 
+            $this->getMutations(4,2);
+            exit();
+
             for ($mutation=1; $mutation < $mutations; $mutation++) {
                 $value = '';
                 $level = 0;
@@ -66,6 +69,51 @@ class RandomForrest {
         echo "\n";
 
     }
+
+    /**
+     * @param $fieldCount
+     * @param $level
+     */
+    public function getMutations($fieldCount, $level)
+    {
+        $mutations = [];
+        $fields = [];
+        for($i=0; $i<$level; $i++) {
+            $fields[$i] = 1;
+        }
+        $fields[$level-1]=0;
+
+        while($fields[0] < $fieldCount) {
+            $fields[$level-1]++;
+
+            // next
+            for($i=$level-1; $i>=0; $i--) {
+                if ($fields[$i] > $fieldCount && $i !== 0) {
+                    $fields[$i]=1;
+                    $fields[$i-1]++;
+                }
+            }
+
+            // check if a > b > c > ..
+            $valid = true;
+            for($i=0; $i<$level-1; $i++) {
+                if ($fields[$i] >= $fields[$i+1]) {
+                    $valid = false;
+                }
+            }
+
+            if ($valid) {
+                $mutations[] = $fields;
+            }
+        }
+
+        var_dump($mutations);
+
+
+        return $mutations;
+    }
+
+
 
     /**
      * @param array $sample
