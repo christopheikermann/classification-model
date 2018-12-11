@@ -1,6 +1,6 @@
 <?php  declare(strict_types=1);
 
-namespace PhpmlExamples;
+namespace Phpml\Regression;
 
 class RandomForrest {
 
@@ -17,6 +17,7 @@ class RandomForrest {
     protected $valueCacheDecrypt = [];
 
     protected $valueCacheCount = 1;
+    protected $mutationFields = [];
 
     /**
      * RandomForrest constructor.
@@ -24,25 +25,25 @@ class RandomForrest {
      * @param array $targets
      * @param array $columnNames
      */
-    public function train(array $samples, array $targets, array $columnNames)
+    public function train(array $samples, array $targets, array $columnNames, $maxLevel=3)
     {
         $this->columnNames = $columnNames;
         $fieldCount = count($this->columnNames);
-        $mutations = pow(2,$fieldCount);
+        $this->mutationFields=$this->getMutations($fieldCount,$maxLevel);
         $this->data = [];
         $this->dataSum = [];
 
-        echo "Mutationen: ".$mutations."\n";
+        echo "Mutationen: ".count($this->mutationFields)."\n";
         echo "Samples: ".(count($samples))."\n";
-        echo "Datasets: ".($mutations*count($samples))."\n";
+        echo "Datasets: ".(count($this->mutationFields)*count($samples))."\n";
 
         foreach($this->columnNames as $fieldNumber => $fieldName) {
-            $this->fields[$fieldNumber]['binary'] = pow(2,$fieldNumber);
+            $this->fields[$fieldNumber]['number'] = $fieldNumber;
             $this->fields[$fieldNumber]['name'] = $fieldName;
         }
 
         foreach($samples as $sampleNumber => $sample) {
-            if ($sampleNumber % 20 == 1) {
+            if ($sampleNumber % 100 == 1) {
                 echo "\r".(round(($sampleNumber/count($samples)),4)*100). ' % (' . $this->convert(memory_get_usage()) . ")";
 
                 if ($sampleNumber > 5000 && $sampleNumber % 5000 == 1) {
@@ -50,17 +51,13 @@ class RandomForrest {
                 }
             }
 
-            $this->getMutations(4,2);
-            exit();
-
-            for ($mutation=1; $mutation < $mutations; $mutation++) {
+            foreach($this->mutationFields as $mutationField) {
                 $value = '';
-                $level = 0;
-                foreach($this->fields as $fieldNumber => $field) {
-                    if ($mutation & $field['binary']) {
-                        $value.= $this->valueEncrypt($sample[$fieldNumber]).self::VALUE_SEPARATOR;
-                        $level++;
-                    }
+                $mutation = '';
+                $level = count($mutationField);
+                foreach($mutationField as $fieldNumber) {
+                    $value.= $this->valueEncrypt($sample[$fieldNumber]).self::VALUE_SEPARATOR;
+                    $mutation .= $fieldNumber.self::VALUE_SEPARATOR;
                 }
                 $this->data[$level.self::KEY_SEPARATOR.$mutation.self::KEY_SEPARATOR.$value][$this->valueEncrypt($targets[$sampleNumber])]++;
                 $this->dataSum[$level.self::KEY_SEPARATOR.$mutation.self::KEY_SEPARATOR.$value]++;
@@ -73,8 +70,24 @@ class RandomForrest {
     /**
      * @param $fieldCount
      * @param $level
+     * @return array
      */
     public function getMutations($fieldCount, $level)
+    {
+        $mutations = [];
+        for ($iLevel=1; $iLevel<=$level; $iLevel++) {
+            $mutations = array_merge($mutations, $this->getMutationLevel($fieldCount, $iLevel));
+        }
+
+        return $mutations;
+    }
+
+    /**
+     * @param $fieldCount
+     * @param $level
+     * @return array
+     */
+    public function getMutationLevel($fieldCount, $level)
     {
         $mutations = [];
         $fields = [];
@@ -99,6 +112,7 @@ class RandomForrest {
             for($i=0; $i<$level-1; $i++) {
                 if ($fields[$i] >= $fields[$i+1]) {
                     $valid = false;
+                    break;
                 }
             }
 
@@ -106,9 +120,6 @@ class RandomForrest {
                 $mutations[] = $fields;
             }
         }
-
-        var_dump($mutations);
-
 
         return $mutations;
     }
@@ -120,23 +131,21 @@ class RandomForrest {
      * @param int $minLevel
      * @return array
      */
-    public function predict(array $sample, $minLevel = 5)
+    public function predict(array $sample, $minLevel = 2)
     {
         $predictionFinding = [];
         $predictionSum = [];
         $predictions = [];
         $predictionCount = 0;
         $fieldCount = count($this->columnNames);
-        $mutations = pow(2,$fieldCount);
 
-        for ($mutation=1; $mutation < $mutations; $mutation++) {
+        foreach($this->mutationFields as $mutationField) {
             $value = '';
-            $level = 0;
-            foreach($this->fields as $fieldNumber => $field) {
-                if ($mutation & $field['binary']) {
-                    $value.= $this->valueEncrypt($sample[$fieldNumber]).self::VALUE_SEPARATOR;
-                    $level++;
-                }
+            $mutation = '';
+            $level = count($mutationField);
+            foreach($mutationField as $fieldNumber) {
+                $value.= $this->valueEncrypt($sample[$fieldNumber]).self::VALUE_SEPARATOR;
+                $mutation .= $fieldNumber.self::VALUE_SEPARATOR;
             }
             if ($level >= $minLevel && isset($this->data[$level.self::KEY_SEPARATOR.$mutation.self::KEY_SEPARATOR.$value])) {
                 $predictionFinding[$level][$mutation] = $this->data[$level.self::KEY_SEPARATOR.$mutation.self::KEY_SEPARATOR.$value];
@@ -149,7 +158,6 @@ class RandomForrest {
                 foreach($predictionFinding[$levelPrediction] as $mutationNumber => $predictionMutation) {
                     foreach($predictionMutation as $target => $count) {
                         $predictions[$this->valueDecrypt($target)] += ($count / $predictionSum[$levelPrediction][$mutationNumber])*$levelPrediction;
-
                     }
                     $predictionCount+=$levelPrediction;
                 }

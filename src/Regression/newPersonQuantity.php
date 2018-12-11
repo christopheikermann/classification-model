@@ -1,18 +1,18 @@
 <?php declare(strict_types=1);
 
-namespace PhpmlExamples;
+namespace Phpml\Classification;
 
 include 'vendor/autoload.php';
-include 'RandomForrest.php';
+include 'src/Regression/RandomForrest.php';
+
 use Phpml\Dataset\CsvDataset;
+use Phpml\Regression\RandomForrest;
 
 ini_set('memory_limit', '2048M');
 
 $dataset = new CsvDataset('data/person_original_train.csv', 9, true, ';');
 $regressionModell = new RandomForrest();
 $regressionModell->train($dataset->getSamples(), $dataset->getTargets(), $dataset->getColumnNames());
-
-exit();
 
 $dataset = new CsvDataset('data/person_original_predict.csv', 9, true, ';');
 $samples = $dataset->getSamples();

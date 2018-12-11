@@ -1,5 +1,5 @@
 {
-  "name": "php-ai/php-ml-examples",
+  "name": "classification",
   "type": "project",
   "description": "Examples of the use of PHP-ML library",
   "keywords": [
@@ -8,15 +8,14 @@
     "computational learning theory",
     "artificial intelligence"
   ],
-  "homepage": "https://github.com/php-ai/php-ml-examples",
-  "license": "MIT",
-  "authors": [
-    {
-      "name": "Arkadiusz Kondas",
-      "email": "arkadiusz.kondas@gmail.com"
+  "autoload": {
+    "psr-4": {
+      "Tests\\": "tests/",
+      "Classification\\": "src/"
     }
-  ],
+  },
   "require": {
-    "php-ai/php-ml": "0.6.2"
+    "php-ai/php-ml": "0.6.2",
+    "phpunit/phpunit": "^6"
   }
 }
