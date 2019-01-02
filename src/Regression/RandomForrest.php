@@ -2,6 +2,8 @@
 
 namespace Phpml\Regression;
 
+use Phpml\Statistic\Statistic;
+
 class RandomForrest {
 
     const KEY_SEPARATOR = '#';
@@ -25,17 +27,18 @@ class RandomForrest {
      * @param array $targets
      * @param array $columnNames
      */
-    public function train(array $samples, array $targets, array $columnNames, $maxLevel=3)
+    public function train(array $samples, array $targets, array $columnNames, $maxLevel=4)
     {
+        $startTime = time();
         $this->columnNames = $columnNames;
         $fieldCount = count($this->columnNames);
         $this->mutationFields=$this->getMutations($fieldCount,$maxLevel);
         $this->data = [];
         $this->dataSum = [];
 
-        echo "Mutationen: ".count($this->mutationFields)."\n";
-        echo "Samples: ".(count($samples))."\n";
-        echo "Datasets: ".(count($this->mutationFields)*count($samples))."\n";
+        echo "Mutationen: " . count($this->mutationFields) . "\n";
+        echo "Samples: " . number_format(count($samples), 0, ',', '.') . "\n";
+        echo "Datasets: " . number_format(count($this->mutationFields) * count($samples), 0, ',', '.') . "\n";
 
         foreach($this->columnNames as $fieldNumber => $fieldName) {
             $this->fields[$fieldNumber]['number'] = $fieldNumber;
@@ -43,12 +46,8 @@ class RandomForrest {
         }
 
         foreach($samples as $sampleNumber => $sample) {
-            if ($sampleNumber % 100 == 1) {
-                echo "\r".(round(($sampleNumber/count($samples)),4)*100). ' % (' . $this->convert(memory_get_usage()) . ")";
-
-                if ($sampleNumber > 5000 && $sampleNumber % 5000 == 1) {
-                    $this->filterByOccurrency(1);
-                }
+            if ($sampleNumber % 500 == 1) {
+                $this->printStatus(round(($sampleNumber/count($samples)),4)*100, $startTime);
             }
 
             foreach($this->mutationFields as $mutationField) {
@@ -63,8 +62,26 @@ class RandomForrest {
                 $this->dataSum[$level.self::KEY_SEPARATOR.$mutation.self::KEY_SEPARATOR.$value]++;
             }
         }
-        echo "\n";
 
+        $this->printStatus(100);
+        echo "\n\n";
+
+    }
+
+    /**
+     * @param $percent
+     * @param $startTime
+     */
+    public function printStatus($percent, $startTime = null)
+    {
+        if ($startTime) {
+            $duration = time() - $startTime;
+            $remainingTime = round(((100 / ($percent +0.001))-1) * $duration,0);
+        } else {
+            $remainingTime = 0;
+        }
+
+        echo "\r" . $percent . ' % (' . $this->convert(memory_get_usage()) . ", " . $remainingTime .  " s)     ";
     }
 
     /**
@@ -155,11 +172,19 @@ class RandomForrest {
 
         for($levelPrediction = $fieldCount; $levelPrediction > 1; $levelPrediction--) {
             if (isset($predictionFinding[$levelPrediction])) {
+                $occurencyFilter = [];
                 foreach($predictionFinding[$levelPrediction] as $mutationNumber => $predictionMutation) {
-                    foreach($predictionMutation as $target => $count) {
-                        $predictions[$this->valueDecrypt($target)] += ($count / $predictionSum[$levelPrediction][$mutationNumber])*$levelPrediction;
+                    $occurencyFilter[] = $predictionSum[$levelPrediction][$mutationNumber];
+                }
+                $occurencyFilterValue = Statistic::percentileValue($occurencyFilter, 0.1);
+
+                foreach($predictionFinding[$levelPrediction] as $mutationNumber => $predictionMutation) {
+                    if ($predictionSum[$levelPrediction][$mutationNumber] >= $occurencyFilterValue) {
+                        foreach ($predictionMutation as $target => $count) {
+                            $predictions[$this->valueDecrypt($target)] += ($count / $predictionSum[$levelPrediction][$mutationNumber]) * (2^$levelPrediction);
+                        }
+                        $predictionCount += (2^$levelPrediction);
                     }
-                    $predictionCount+=$levelPrediction;
                 }
             }
         }
@@ -184,7 +209,7 @@ class RandomForrest {
         $predictionUnclear=0;
         $predictionClear=0;
 
-        echo "Predictions: ".count($samples)."\n";
+        echo "\nPredictions: ".count($samples)."\n";
         foreach($samples as $key => $predictSample) {
             $prediction = $this->predict($predictSample);
 

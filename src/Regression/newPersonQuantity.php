@@ -4,6 +4,7 @@ namespace Phpml\Classification;
 
 include 'vendor/autoload.php';
 include 'src/Regression/RandomForrest.php';
+include 'src/Statistic/Statistic.php';
 
 use Phpml\Dataset\CsvDataset;
 use Phpml\Regression\RandomForrest;
@@ -19,11 +20,23 @@ $samples = $dataset->getSamples();
 $targets = $dataset->getTargets();
 
 $regressionModell->evaluate($samples, $targets);
+$random = array_rand($samples, 1);
+$preditSample = $samples[$random];
 
-$regressionModell->filterByOccurrency(50)
+echo json_encode($preditSample);
+
+$result = $regressionModell->predict($preditSample);
+
+print_r($result);
+print_r($targets[$random]);
+
+/*
+$regressionModell->filterByOccurrency(10)
     ->filterByLevel(3)
     ->filterByTarget('>50K')
-    ->filterByAccuracy(0.9);
+    ->filterByAccuracy(0.7);
+
+
 
 $regressionModell->printResult();
-
+*/
